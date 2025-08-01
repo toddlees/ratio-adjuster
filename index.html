@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>60:40 Ratio Calculator</title>
+    <!-- Tailwind CSS for styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        /* Use the Inter font family */
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        /* Custom focus styles for better accessibility and appearance */
+        .form-input:focus {
+            outline: 2px solid transparent;
+            outline-offset: 2px;
+            border-color: #4f46e5;
+            box-shadow: 0 0 0 2px #4f46e5;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen">
+
+    <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-8 space-y-6">
+        
+        <!-- Header Section -->
+        <div class="text-center">
+            <h1 class="text-2xl md:text-3xl font-bold text-gray-900">60:40 Ratio Calculator</h1>
+            <p class="mt-2 text-sm text-gray-600">Enter two numbers to adjust them to a 60:40 ratio while preserving their sum.</p>
+        </div>
+
+        <!-- Input Form -->
+        <div class="space-y-4">
+            <div>
+                <label for="num1" class="block text-sm font-medium text-gray-700">First Number</label>
+                <input type="number" id="num1" step="any" class="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 50.5">
+            </div>
+            <div>
+                <label for="num2" class="block text-sm font-medium text-gray-700">Second Number</label>
+                <input type="number" id="num2" step="any" class="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 24.25">
+            </div>
+        </div>
+
+        <!-- Action Button -->
+        <div>
+            <button id="calculateBtn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors">
+                Calculate
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div id="results" class="pt-4 space-y-4">
+            <!-- Results will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Get references to the DOM elements
+        const num1Input = document.getElementById('num1');
+        const num2Input = document.getElementById('num2');
+        const calculateBtn = document.getElementById('calculateBtn');
+        const resultsDiv = document.getElementById('results');
+
+        /**
+         * Main function to perform the ratio calculation.
+         * This logic is adapted from the provided Python script.
+         */
+        function adjustRatio() {
+            // 1. Get and parse numbers from input fields
+            const num1 = parseFloat(num1Input.value);
+            const num2 = parseFloat(num2Input.value);
+
+            // Clear previous results
+            resultsDiv.innerHTML = '';
+
+            // Validate inputs
+            if (isNaN(num1) || isNaN(num2)) {
+                displayError("Please enter valid numbers in both fields.");
+                return;
+            }
+
+            // --- 2. Calculate the current state ---
+            const totalSum = num1 + num2;
+
+            if (totalSum === 0) {
+                displayError("The sum of the numbers is 0. A ratio cannot be calculated.");
+                return;
+            }
+
+            const currentPercent1 = (num1 / totalSum) * 100;
+            const currentPercent2 = (num2 / totalSum) * 100;
+
+            // --- 3. Calculate the ideal numbers for a 60/40 ratio ---
+            const idealNum1 = totalSum * 0.6;
+            const idealNum2 = totalSum * 0.4;
+            
+            // --- 4. Adjust the ideal numbers to the nearest 0.25 increment ---
+            // This replicates the rounding logic from the Python script.
+            let adjustedNum1 = Math.round(idealNum1 * 4) / 4;
+            let adjustedNum2 = Math.round(idealNum2 * 4) / 4;
+
+            // --- 5. Correct for any rounding discrepancies to preserve the sum ---
+            const currentAdjustedSum = adjustedNum1 + adjustedNum2;
+            const difference = totalSum - currentAdjustedSum;
+            
+            // Add the difference to the larger number to maintain the sum precisely.
+            if (difference !== 0) {
+                // We use a small epsilon to handle floating point inaccuracies in comparison
+                if (adjustedNum1 > adjustedNum2 || Math.abs(adjustedNum1 - adjustedNum2) < 1e-9) {
+                    adjustedNum1 += difference;
+                } else {
+                    adjustedNum2 += difference;
+                }
+            }
+
+            // --- 6. Display the results ---
+            displayResults({
+                originalNum1: num1,
+                originalNum2: num2,
+                totalSum: totalSum,
+                currentRatio1: currentPercent1,
+                currentRatio2: currentPercent2,
+                adjustedNum1: adjustedNum1,
+                adjustedNum2: adjustedNum2
+            });
+        }
+
+        /**
+         * Renders the results in a formatted way.
+         * @param {object} data - The calculated data to display.
+         */
+        function displayResults(data) {
+            resultsDiv.innerHTML = `
+                <div class="bg-gray-100 p-4 rounded-lg space-y-3">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">Original State</h3>
+                        <div class="text-sm text-gray-600 mt-1 space-y-1">
+                            <p><strong>Numbers:</strong> ${data.originalNum1.toFixed(2)} & ${data.originalNum2.toFixed(2)}</p>
+                            <p><strong>Total Sum:</strong> ${data.totalSum.toFixed(2)}</p>
+                            <p><strong>Current Ratio:</strong> ${data.currentRatio1.toFixed(2)}% / ${data.currentRatio2.toFixed(2)}%</p>
+                        </div>
+                    </div>
+                    <hr class="border-gray-200">
+                    <div>
+                        <h3 class="font-semibold text-green-700">Adjusted for 60/40 Ratio</h3>
+                        <div class="text-sm text-gray-600 mt-1 space-y-1">
+                            <p><strong>Adjusted Number 1:</strong> <span class="font-bold text-green-600">${data.adjustedNum1.toFixed(2)}</span></p>
+                            <p><strong>Adjusted Number 2:</strong> <span class="font-bold text-green-600">${data.adjustedNum2.toFixed(2)}</span></p>
+                            <p><strong>New Sum:</strong> ${(data.adjustedNum1 + data.adjustedNum2).toFixed(2)} (Sum is preserved)</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        /**
+         * Displays an error message in the results area.
+         * @param {string} message - The error message to show.
+         */
+        function displayError(message) {
+            resultsDiv.innerHTML = `
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                    <p class="font-bold">Error</p>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
+        // --- Event Listeners ---
+        calculateBtn.addEventListener('click', adjustRatio);
+        
+        // Allow pressing 'Enter' in the input fields to trigger calculation
+        num1Input.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                adjustRatio();
+            }
+        });
+        num2Input.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                adjustRatio();
+            }
+        });
+
+    </script>
+</body>
+</html>
