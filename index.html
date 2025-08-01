@@ -24,7 +24,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen">
+<body class="bg-gray-50 text-gray-800 flex items-center justify-center min-h-screen py-12">
 
     <div class="w-full max-w-md mx-auto bg-white rounded-xl shadow-lg p-8 space-y-6">
         
@@ -57,6 +57,34 @@
         <div id="results" class="pt-4 space-y-4">
             <!-- Results will be dynamically inserted here -->
         </div>
+
+        <!-- Optional Step for Fine-Tuning -->
+        <div id="optionalStep" class="hidden pt-6 mt-6 border-t border-gray-200 space-y-4">
+            <div class="text-center">
+                 <h2 class="text-xl font-bold text-gray-800">Fine-Tune Adjustment</h2>
+                 <p class="mt-1 text-sm text-gray-600">The total adjustment is 8 hours or less. You can suggest changes to specific sub-tasks to meet the ratio.</p>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label for="subNum1" class="block text-sm font-medium text-gray-700">First Sub-Number (Part of First Number)</label>
+                    <input type="number" id="subNum1" step="any" class="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 10">
+                </div>
+                <div>
+                    <label for="subNum2" class="block text-sm font-medium text-gray-700">Second Sub-Number (Part of Second Number)</label>
+                    <input type="number" id="subNum2" step="any" class="form-input mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm" placeholder="e.g., 5">
+                </div>
+            </div>
+             <div>
+                <button id="suggestBtn" class="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-teal-500 transition-colors">
+                    Suggest Adjustment
+                </button>
+            </div>
+            <!-- Suggestion Results Section -->
+            <div id="suggestionResults" class="pt-4 space-y-4">
+                <!-- Suggestion results will be dynamically inserted here -->
+            </div>
+        </div>
+
     </div>
 
     <script>
@@ -66,17 +94,33 @@
         const calculateBtn = document.getElementById('calculateBtn');
         const resultsDiv = document.getElementById('results');
 
+        // New elements for optional step
+        const optionalStepDiv = document.getElementById('optionalStep');
+        const subNum1Input = document.getElementById('subNum1');
+        const subNum2Input = document.getElementById('subNum2');
+        const suggestBtn = document.getElementById('suggestBtn');
+        const suggestionResultsDiv = document.getElementById('suggestionResults');
+
+        // Store original numbers for the suggestion calculation
+        let originalNum1 = 0;
+        let originalNum2 = 0;
+
         /**
          * Main function to perform the ratio calculation.
-         * This logic is adapted from the provided Python script.
          */
         function adjustRatio() {
             // 1. Get and parse numbers from input fields
             const num1 = parseFloat(num1Input.value);
             const num2 = parseFloat(num2Input.value);
 
-            // Clear previous results
+            // Store for later use in suggestion
+            originalNum1 = num1;
+            originalNum2 = num2;
+
+            // Clear previous results and hide optional step
             resultsDiv.innerHTML = '';
+            suggestionResultsDiv.innerHTML = '';
+            optionalStepDiv.classList.add('hidden');
 
             // Validate inputs
             if (isNaN(num1) || isNaN(num2)) {
@@ -100,7 +144,6 @@
             const idealNum2 = totalSum * 0.4;
             
             // --- 4. Adjust the ideal numbers to the nearest 0.25 increment ---
-            // This replicates the rounding logic from the Python script.
             let adjustedNum1 = Math.round(idealNum1 * 4) / 4;
             let adjustedNum2 = Math.round(idealNum2 * 4) / 4;
 
@@ -108,9 +151,7 @@
             const currentAdjustedSum = adjustedNum1 + adjustedNum2;
             const difference = totalSum - currentAdjustedSum;
             
-            // Add the difference to the larger number to maintain the sum precisely.
-            if (difference !== 0) {
-                // We use a small epsilon to handle floating point inaccuracies in comparison
+            if (Math.abs(difference) > 1e-9) {
                 if (adjustedNum1 > adjustedNum2 || Math.abs(adjustedNum1 - adjustedNum2) < 1e-9) {
                     adjustedNum1 += difference;
                 } else {
@@ -128,11 +169,74 @@
                 adjustedNum1: adjustedNum1,
                 adjustedNum2: adjustedNum2
             });
+
+            // --- 7. Check if optional step should be shown ---
+            const totalChange = Math.abs(adjustedNum1 - num1) + Math.abs(adjustedNum2 - num2);
+            if (totalChange > 0 && totalChange <= 8) {
+                optionalStepDiv.classList.remove('hidden');
+            }
         }
 
         /**
-         * Renders the results in a formatted way.
-         * @param {object} data - The calculated data to display.
+         * Calculates a suggested change for sub-numbers to meet the ratio.
+         */
+        function calculateSuggestion() {
+            // 1. Get and parse sub-numbers
+            const subNum1 = parseFloat(subNum1Input.value);
+            const subNum2 = parseFloat(subNum2Input.value);
+
+            // Clear previous suggestion results
+            suggestionResultsDiv.innerHTML = '';
+
+            // Validate inputs
+            if (isNaN(subNum1) || isNaN(subNum2)) {
+                displaySuggestionError("Please enter valid numbers in both sub-number fields.");
+                return;
+            }
+            if (subNum1 > originalNum1 || subNum2 > originalNum2) {
+                displaySuggestionError("Sub-numbers cannot be greater than their respective original numbers.");
+                return;
+            }
+
+            // --- 2. Calculate ideal adjusted sub-numbers ---
+            // The goal is for the new total number 1 to be 60% of the grand total sum.
+            // New Total 1 = (originalNum1 - subNum1 + suggestedS1)
+            const totalSum = originalNum1 + originalNum2;
+            const targetNum1 = totalSum * 0.6;
+            
+            // From this, we can derive the ideal value for the first suggested sub-number.
+            const idealS1 = targetNum1 - originalNum1 + subNum1;
+            
+            // The sum of the sub-numbers must be preserved, so we derive the second.
+            const subSum = subNum1 + subNum2;
+            const idealS2 = subSum - idealS1;
+
+            // --- 3. Round to nearest 0.25 ---
+            let finalS1 = Math.round(idealS1 * 4) / 4;
+            let finalS2 = Math.round(idealS2 * 4) / 4;
+
+            // --- 4. Correct rounding to preserve the sub-sum ---
+            const currentAdjustedSubSum = finalS1 + finalS2;
+            const subDifference = subSum - currentAdjustedSubSum;
+            if (Math.abs(subDifference) > 1e-9) { // Use epsilon for float comparison
+                 if (finalS1 > finalS2 || Math.abs(finalS1 - finalS2) < 1e-9) {
+                    finalS1 += subDifference;
+                } else {
+                    finalS2 += subDifference;
+                }
+            }
+
+            // --- 5. Display the suggestion ---
+            displaySuggestion({
+                originalSub1: subNum1,
+                originalSub2: subNum2,
+                suggestedS1: finalS1,
+                suggestedS2: finalS2,
+            });
+        }
+
+        /**
+         * Renders the main results in a formatted way.
          */
         function displayResults(data) {
             resultsDiv.innerHTML = `
@@ -157,10 +261,40 @@
                 </div>
             `;
         }
+        
+        /**
+         * Renders the suggestion results.
+         */
+        function displaySuggestion(data) {
+            const newTotal1 = originalNum1 - data.originalSub1 + data.suggestedS1;
+            const newTotal2 = originalNum2 - data.originalSub2 + data.suggestedS2;
+            const newTotalSum = newTotal1 + newTotal2;
+            
+            suggestionResultsDiv.innerHTML = `
+                <div class="bg-teal-50 p-4 rounded-lg space-y-3">
+                    <div>
+                        <h3 class="font-semibold text-teal-800">Suggestion</h3>
+                        <div class="text-sm text-gray-600 mt-1 space-y-1">
+                            <p>To achieve the 60/40 ratio by only changing the sub-numbers:</p>
+                            <p>Change <strong>${data.originalSub1.toFixed(2)}</strong> to <span class="font-bold text-teal-600">${data.suggestedS1.toFixed(2)}</span></p>
+                            <p>Change <strong>${data.originalSub2.toFixed(2)}</strong> to <span class="font-bold text-teal-600">${data.suggestedS2.toFixed(2)}</span></p>
+                        </div>
+                    </div>
+                    <hr class="border-gray-200">
+                    <div>
+                        <h3 class="font-semibold text-gray-800">Verification</h3>
+                        <div class="text-sm text-gray-600 mt-1 space-y-1">
+                            <p><strong>New Total 1:</strong> ${originalNum1.toFixed(2)} - ${data.originalSub1.toFixed(2)} + ${data.suggestedS1.toFixed(2)} = <strong>${newTotal1.toFixed(2)}</strong></p>
+                            <p><strong>New Total 2:</strong> ${originalNum2.toFixed(2)} - ${data.originalSub2.toFixed(2)} + ${data.suggestedS2.toFixed(2)} = <strong>${newTotal2.toFixed(2)}</strong></p>
+                            <p><strong>New Ratio:</strong> ${((newTotal1/newTotalSum)*100).toFixed(2)}% / ${((newTotal2/newTotalSum)*100).toFixed(2)}%</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
 
         /**
-         * Displays an error message in the results area.
-         * @param {string} message - The error message to show.
+         * Displays an error message in the main results area.
          */
         function displayError(message) {
             resultsDiv.innerHTML = `
@@ -171,20 +305,26 @@
             `;
         }
 
+        /**
+         * Displays an error message in the suggestion results area.
+         */
+        function displaySuggestionError(message) {
+             suggestionResultsDiv.innerHTML = `
+                <div class="bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-md" role="alert">
+                    <p class="font-bold">Error</p>
+                    <p>${message}</p>
+                </div>
+            `;
+        }
+
         // --- Event Listeners ---
         calculateBtn.addEventListener('click', adjustRatio);
+        suggestBtn.addEventListener('click', calculateSuggestion);
         
-        // Allow pressing 'Enter' in the input fields to trigger calculation
-        num1Input.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                adjustRatio();
-            }
-        });
-        num2Input.addEventListener('keypress', function(event) {
-            if (event.key === 'Enter') {
-                adjustRatio();
-            }
-        });
+        num1Input.addEventListener('keypress', (e) => e.key === 'Enter' && adjustRatio());
+        num2Input.addEventListener('keypress', (e) => e.key === 'Enter' && adjustRatio());
+        subNum1Input.addEventListener('keypress', (e) => e.key === 'Enter' && calculateSuggestion());
+        subNum2Input.addEventListener('keypress', (e) => e.key === 'Enter' && calculateSuggestion());
 
     </script>
 </body>
