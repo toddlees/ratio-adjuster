@@ -110,8 +110,8 @@
          */
         function adjustRatio() {
             // 1. Get and parse numbers from input fields
-            const num1 = parseFloat(num1Input.value);
-            const num2 = parseFloat(num2Input.value);
+            const num1 = parseFloat(num1Input.value) || 0;
+            const num2 = parseFloat(num2Input.value) || 0;
 
             // Store for later use in suggestion
             originalNum1 = num1;
